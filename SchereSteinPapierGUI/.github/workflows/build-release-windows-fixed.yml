@@ -1,0 +1,81 @@
+name: Build and Release Windows Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Build with Maven (package fat JAR)
+        run: mvn -B -DskipTests package
+
+      - name: Locate built JAR and prepare input folder
+        shell: pwsh
+        run: |
+          Write-Host "Listing target folder"
+          Get-ChildItem -Path target -File -Recurse | ForEach-Object { Write-Host $_.FullName }
+          $jar = Get-ChildItem -Path target -Filter '*-shaded.jar' -Recurse -File | Select-Object -First 1
+          if (-not $jar) {
+            # fallback: pick any jar in target (exclude original jars created by plugins)
+            $jar = Get-ChildItem -Path target -Filter '*.jar' -Recurse -File | Where-Object { $_.Name -notlike '*original*' } | Select-Object -First 1
+          }
+          if (-not $jar) { Write-Error "No JAR found in target/"; exit 1 }
+          Write-Host "Found JAR: $($jar.FullName)"
+          mkdir installer-input
+          Copy-Item $jar.FullName -Destination installer-input/
+          $env:MAIN_JAR = Split-Path $jar.FullName -Leaf
+          echo "MAIN_JAR=$env:MAIN_JAR" | Out-File -FilePath "$env:GITHUB_ENV" -Encoding utf8 -Append
+
+      - name: Create installer output dir
+        run: powershell -Command "if (-not (Test-Path installer-output)) { New-Item -ItemType Directory -Path installer-output }"
+
+      - name: Run packaging script (jpackage + optional signing)
+        shell: pwsh
+        env:
+          MAIN_JAR: ${{ env.MAIN_JAR }}
+          SIGN_PFX_B64: ${{ secrets.SIGN_PFX_B64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+          SIGN_PFX_PATH: ${{ secrets.SIGN_PFX_PATH }}
+        run: |
+          Write-Host "Using MAIN_JAR: $env:MAIN_JAR"
+          # Ensure dist exists and copy the built JAR into dist as the expected name
+          if (-not (Test-Path dist)) { New-Item -ItemType Directory -Path dist | Out-Null }
+          Copy-Item -Path (Join-Path $PWD 'installer-input' $env:MAIN_JAR) -Destination (Join-Path $PWD 'dist' 'SchereSteinPapier.jar') -Force
+          # Run the packaging script which will call jpackage and optionally sign the produced EXE(s)
+          powershell -ExecutionPolicy Bypass -File .\scripts\package-with-jpackage.ps1 -IconPath ".\resources\favicon.ico"
+
+      - name: Prepare release (create tag if not present)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: echo "Triggered by tag ${{ github.ref_name }}"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+
+      - name: Upload installer to Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          files: installer-output/*
+
+      - name: Done
+        run: Write-Host "Release complete."

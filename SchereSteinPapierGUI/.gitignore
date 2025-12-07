@@ -1,0 +1,21 @@
+# Java / Maven
+target/
+dist/
+installer/
+*.class
+
+# Archives
+*.zip
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+*.log
+
+# Virtual envs
+.venv/
+
+# Mac
+.DS_Store

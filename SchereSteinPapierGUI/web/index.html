@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SchereSteinPapier — Web</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="app">
+        <div id="start" class="screen">
+            <h1>SchereSteinPapier</h1>
+            <div class="buttons">
+                <button id="btn-computer">Play vs Computer</button>
+                <button id="btn-multiplayer">Multiplayer (1v1)</button>
+            </div>
+            <p class="note">Playable in browser and via Android WebView (see README)</p>
+        </div>
+
+        <div id="multiplayer" class="screen hidden">
+            <h2>Multiplayer</h2>
+            <div class="mp-actions">
+                <button id="btn-create">Create Game</button>
+                <div class="or">or</div>
+                <input id="join-code" placeholder="Enter join code" maxlength="6" />
+                <button id="btn-join">Join</button>
+            </div>
+            <div id="mp-status" class="status"></div>
+            <div id="mp-play-area" class="play-area hidden">
+                <div id="opponent">Opponent: <span id="opponent-id">—</span></div>
+                <div class="choices">
+                    <button class="choice" data-move="rock">Rock</button>
+                    <button class="choice" data-move="paper">Paper</button>
+                    <button class="choice" data-move="scissors">Scissors</button>
+                </div>
+                <div id="result" class="result"></div>
+            </div>
+            <div class="nav"><button id="btn-back-from-mp">Back</button></div>
+        </div>
+
+        <div id="computer" class="screen hidden">
+            <h2>Play vs Computer</h2>
+            <div class="choices">
+                <button class="choice" data-move="rock">Rock</button>
+                <button class="choice" data-move="paper">Paper</button>
+                <button class="choice" data-move="scissors">Scissors</button>
+            </div>
+            <div id="comp-result" class="result"></div>
+            <div class="nav"><button id="btn-back-from-comp">Back</button></div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
